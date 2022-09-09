@@ -70,8 +70,8 @@ if (user_input3=='y'):
     else :
         print('failed download of opencv')
 
-    #output=os.system('wget https://bootstrap.pypa.io/get-pip.py')
-    #output=os.system('sudo python get-pip.py')
+    output=os.system('wget https://bootstrap.pypa.io/get-pip.py')
+    output=os.system('sudo python get-pip.py')
 
     output=os.system('pip3 install numpy')
     output=os.system('cd opencv-3.0.0; mkdir build;cd build')+output
@@ -141,8 +141,8 @@ if (user_input4=='y'):
         f.close()
         
         
-time.sleep(5)
-os.system('sudo reboot')
+#time.sleep(5)
+#os.system('sudo reboot')
 
         
     

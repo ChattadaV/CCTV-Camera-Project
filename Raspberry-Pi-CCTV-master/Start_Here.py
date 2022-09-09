@@ -6,7 +6,7 @@
 
 #>>>>>>>>>>>>>>>>>>>>Read Me<<<<<<<<<<<<<<<<<<<<<<
 #If you mistakenly opened this click the "x" in the
-#top right corner and do not save any changes. 
+#top right corner and do not save any changes.
 #>>>>>>>>>>>>>>>>>>>>Read Me<<<<<<<<<<<<<<<<<<<<<<<<
 
 #Thank you to Abid Rahman K for his answer at https://stackoverflow.com/questions/11433604/opencv-setting-all-pixels-of-specific-bgr-value-to-another-bgr-value
@@ -34,19 +34,19 @@
 #“For libray cv2 Copyright (c) 2018, Open Source Computer Vision Library.  All rights reserved.
 #
 #This software is provided by the copyright holders and contributors “as is” and any express or
-#implied warranties, including, but not limited to, the implied warranties of merchantability and 
+#implied warranties, including, but not limited to, the implied warranties of merchantability and
 #fitness for a particular purpose are disclaimed. In no event shall copyright holders or contributors
-# be liable for any direct, indirect, incidental, special, exemplary, or consequential damages 
+# be liable for any direct, indirect, incidental, special, exemplary, or consequential damages
 #(including, but not limited to, procurement of substitute goods or services; loss of use, data, or
 # profits; or business interruption) however caused and on any theory of liability, whether in contract,
-# strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this 
+# strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this
 #software, even if advised of the possibility of such damage. This software is provided by the copyright
 # holders and contributors “as is” and any express or implied warranties, including, but not limited to,
-# the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no 
+# the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no
 #event shall copyright holders or contributors be liable for any direct, indirect, incidental, special,
 # exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or
 # services; loss of use, data, or profits; or business interruption) however caused and on any theory of
-# liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising 
+# liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising
 #in any way out of the use of this software, even if advised of the possibility of such damage.  Neither
 # the copyright holders nor the contributors endorse or promote this product.”
 
@@ -74,6 +74,12 @@ from time import sleep
 import sys
 import subprocess
 from math import floor
+from matplotlib import pyplot
+import pytesseract #import image_to_text program
+from gtts import gTTS #import text_tp_speech program (Google Text to Speech)
+import pyttsx3
+
+
 
 ##python 2.7
 #import Tkinter
@@ -90,10 +96,14 @@ from math import floor
 #from time import time
 #import sys
 
-#/////lock file (there can only be one)\\\\\\\\
+#-------------------Unknown lockfile by Nathan------------------------#
+#//////lock file (there can only be one)\\\\\\\\
 location='/home/pi/lock.txt'
-working_dirctory=''
+working_dirctory='' #"About" box GUI
 read_data=0
+
+
+#----unknown lock file by Nathan
 try:
     f=open(location,'r')
     read_data = f.read(1)
@@ -101,12 +111,14 @@ try:
     print('read lock file: '+str(read_data))
 except IOError:
     g=open(location,'w')
-    g.write('1')
     g.close()
     print('made lock file')
 if(read_data):
     exit()
+#---^^---unknown lock file by nathan
 #/////lock file (there can only be one)\\\\\\\\
+#---------------------------------------------------------------------------#
+
 
 def quit_(cam,root):
     osOutput = subprocess.getoutput(["sudo rm "+location])#this allows the program to be started back up
@@ -154,7 +166,7 @@ def blackWhiteF():
     global yellowBlue
     global blackYellow
     global yellowBlack
-    
+
     blackWhite=True
     whiteBlack=False
     yellowBlue=False
@@ -166,7 +178,7 @@ def whiteBlackF():
     global yellowBlue
     global blackYellow
     global yellowBlack
-    
+
     blackWhite=False
     whiteBlack=True
     yellowBlue=False
@@ -205,6 +217,115 @@ def blackYellowF():
     yellowBlue=False
     blackYellow=True
     yellowBlack=False
+
+def screenshot():
+    imsave('/home/pi/Downloads/testscreenshot.png')
+    
+
+def autothresholding():
+    # Automatic brightness and contrast optimization with optional histogram clipping
+    def automatic_brightness_and_contrast(image, clip_hist_percent=1):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Calculate grayscale histogram
+        hist = cv2.calcHist([gray],[0],None,[256],[0,256])
+        hist_size = len(hist)
+
+        # Calculate cumulative distribution from the histogram
+        accumulator = []
+        accumulator.append(float(hist[0]))
+        for index in range(1, hist_size):
+            accumulator.append(accumulator[index -1] + float(hist[index]))
+
+        # Locate points to clip
+        maximum = accumulator[-1]
+        clip_hist_percent *= (maximum/100.0)
+        clip_hist_percent /= 2.0
+
+        # Locate left cut
+        minimum_gray = 0
+        while accumulator[minimum_gray] < clip_hist_percent:
+            minimum_gray += 1
+    
+        # Locate right cut
+        maximum_gray = hist_size -1
+        while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
+            maximum_gray -= 1
+
+        # Calculate alpha and beta values
+        alpha = 255 / (maximum_gray - minimum_gray)
+        beta = -minimum_gray * alpha
+    
+        '''
+        # Calculate new histogram with desired range and show histogram 
+        new_hist = cv2.calcHist([gray],[0],None,[256],[minimum_gray,maximum_gray])
+        pyplot.plot(hist)
+        pyplot.plot(new_hist)
+        pyplot.xlim([0,256])
+        pyplot.show()
+        '''
+
+        auto_result = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+        return (auto_result, alpha, beta)
+
+    image = cv2.imread('/home/pi/Downloads/harrypotter.png')
+    auto_result, alpha, beta = automatic_brightness_and_contrast(image)
+    print('alpha', alpha)
+    print('beta', beta)
+    cv2.imshow('auto_result', auto_result)
+    cv2.imwrite('/home/pi/Downloads/harrypotter_2nd.png', auto_result)
+    cv2.waitKey()    
+   
+#------ Image to Text Conversion using pytesseract from https://youtube.com/watch?v=kxHp5ng6Rgw   
+def imagetotext():
+    img = Image.open("/home/pi/Downloads/pic2.1.png") #Directory of image file to extract text from
+
+    #Only include the following thresholding part to change image contrast
+    #thresh = 100
+    #fn = lambda x : 255 if x > thresh else 0
+    #img = img.convert('L').point(fn, mode='1') #
+    ##img = img.convert('1')
+    #img.save('/home/pi/Downloads/camera_screenshot_02.11.2020_black.png')
+    #-----------------------------------------------
+
+
+    text = pytesseract.image_to_string(img, lang="eng") #use pytesseract to extract text in form of string, english langauge
+    print(text)
+
+    f = open('textauto.txt', 'w')
+    f.write(text)
+    f.close()  
+  
+  
+#------ Online Text to Speech using Google Text to Speech (gTTS) from https://www.youtube.com/watch?v=_Q8wtPCyMdo&list=PLh2AuTfro4t4tQSAsjrTJ5XBsVffh1TzS&index=6
+#def onlinespeech(): #Need to fix start line in separate code
+    
+    
+    
+#------ Offline Text to Speech using pyttsx3 from https://stackoverflow.com/questions/48438686/realistic-text-to-speech-with-python-that-doesnt-require-internet
+#------ pyttsx3 Documentation: https://pypi.org/project/pyttsx3/2.5/
+#------ pyttsx3 voice changing: https://stackoverflow.com/questions/28344200/changing-the-voice-with-pyttsx-module-in-python
+def offlinespeech():
+    engine = pyttsx3.init()
+    #engine = pyttsx3.init(driverName='sapi5') #use this line to specify speech engine (espeak, sapi5 (for windows), nsss (for Mac OS X))
+    voices = engine.getProperty('voices')
+    rate = engine.getProperty('rate')
+
+    #engine.setProperty('voice', voice.id)
+    engine.setProperty('rate', rate-40)
+
+    #myText = 'Testing Text to Speech on Raspberry Pi' #for text_to_speech in the quote
+    fh = open('textauto.txt', 'r') #file handling (open text document for text_tp_speech)
+    myText = fh.read().replace('\n', ' ') #set myText to the the saved document and replace all the line endings with a space (to not confuse gTTS)
+
+    #engine.say("I will speak this text") #for text_to_speech in the quote
+    engine.say(text=myText)
+
+    engine.runAndWait()
+    
+
+    
+#------------Autofocus by Nathan? delete--------------------#    
 def pauseFocusF():
     global autofocus
     print('Autofocus: '+str(autofocus))
@@ -232,16 +353,18 @@ def minusFocusF():
     os.system('v4l2-ctl -d 0 -c focus_auto='+str(0))
     os.system('v4l2-ctl -d 0 -c focus_absolute='+str(varFocus))#side effect: it turns autofocus off
     autofocus=0#the next time Pause focus is clicked it will unpuase
+#-----------------------------------------------------------------------------------------#
+
 
 def slideFocusF(var):
     global varFocus
     global autofocus
-    
+
     varFocus=var
     os.system('v4l2-ctl -d 0 -c focus_auto='+str(0))
     os.system('v4l2-ctl -d 0 -c focus_absolute='+str(varFocus))#side effect: it turns autofocus off
     autofocus=0#the next time Pause focus is clicked it will unpuase
-    
+
 
 def cleanImg(img0,img1):
     averageImg=(numpy.float32(img0)+numpy.float32(img1))/2
@@ -272,7 +395,7 @@ def changeImg(img1):
         img1=cv2.cvtColor(img1,cv2.COLOR_GRAY2BGR);
         img1[numpy.where((img1==[255,255,255]).all(axis=2))] = [0,255,255];
         #sleep(.02)#idk cv2.cvtColor just will not work with out this commented out line and if it stop working uncomment and run
-    
+
     elif blackYellow:
         ret,img1 = cv2.threshold(img1,127,255,cv2.THRESH_BINARY_INV);## slider on the 127(half way piont) now 100
         img1=cv2.cvtColor(img1,cv2.COLOR_GRAY2BGR);
@@ -283,7 +406,7 @@ def changeImg(img1):
 
 def save(cam):
     cam.release()
-    
+
     CV_CAP_PROP_FRAME_WIDTH=3
     CV_CAP_PROP_FRAME_HEIGHT=4
     width=5168
@@ -333,25 +456,25 @@ def daemon(cam,child_conn):
         print("Broken Pipe")
     totalTime=time()-totalTime##################testing
     print ("Total Thread Time "+str(totalTime))##########testing
-    
-    
+
+
 def loop(cam,d,parent_conn):
     totalTime=time()#############testing
     global needToSave
-    
-    
+
+
     #d.join################testing
     #img1=queue.get()############testing
     #d=None################# testing
-    
+
     if d is not None:
-        
+
         img1=parent_conn.recv()
         parent_conn.close()
         d.join()
-        
+
         parent_conn, child_conn = Pipe()
-        
+
         if needToSave:#there can only be one thread polling the cam at a time :_(
             print ("Saving")
             save(cam);
@@ -363,7 +486,7 @@ def loop(cam,d,parent_conn):
             cv2.destroyAllWindows()
             root.destroy()
             print("Changing in 2")
-            #cameraControl.destroy()
+            #Control.destroy()
             cv2.waitKey(1)
             cv2.waitKey(1)
             cv2.waitKey(1)
@@ -374,54 +497,54 @@ def loop(cam,d,parent_conn):
             os.system('python3 '+working_dirctory+'CorrectVeiw.py')
             quit()
             #<<<<<<<<>>>>>>>>>>>
-        
+
         d = threading.Thread(name='daemon', target=daemon,args=(cam,child_conn))
         d.setDaemon(True)
         d.start()
-        
+
     else:#this can be removed
         print ("here")
         d = threading.Thread(name='daemon', target=daemon,args=(cam,queue))
         d.setDaemon(True)
-        
+
         d.start()
         print ("thread d=None")
         d.join()
         d = threading.Thread(name='daemon', target=daemon,args=(cam,queue))
         d.setDaemon(True)
         d.start()
-    
 
-    
-    
+
+
+
     #img1=cv2.cvtColor(img1,cv2.COLOR_BGR2RGB);# idk i just look like a smurf and I fixed it
 
-    #img1 = Image.fromarray(img1)  #############################################  
+    #img1 = Image.fromarray(img1)  #############################################
     #img1 = ImageTk.PhotoImage(img1)
     #panel.configure(image=img1)
 
-    # this is al most working rotation££££££££££££££££££££££££££££££££££££££££  
+    # this is al most working rotation££££££££££££££££££££££££££££££££££££££££
     #y,x=img1.shape[:2]
     #center=(floor(y/2),floor(x/2))
     #temp=cv2.getRotationMatrix2D(center,270,1)
     #img1=cv2.warpAffine(img1,temp,(y,x))
-        
-    #cv2.imshow("camera",img1)#there is no buffer that has to be filled up
-    cv2.imshow("Preview",img1)#opencv is coded in C and is wrapped in python so is will show the image with less than a Sec or more delay.
-    cv2.waitKey(1)#A 1ms delay is DEMANDED by Savitar the God of Speen for cv2.imshow to bless us with sub Sec latency. Praise Him. But no really this has to be in the loop.  
-    
-    
+
+    cv2.imshow("camera",img1)#there is no buffer that has to be filled up
+    #cv2.imshow("Preview",img1)#opencv is coded in C and is wrapped in python so is will show the image with less than a Sec or more delay.
+    cv2.waitKey(1)#A 1ms delay is DEMANDED by Savitar the God of Speen for cv2.imshow to bless us with sub Sec latency. Praise Him. But no really this has to be in the loop.
+
+
     root.update_idletasks()#this over "root.update()" saved .3 sec. Also the Gui will not even show up cause this updates the whole Gui
     root.after(0, func=lambda: loop(cam,d,parent_conn))
-   
+
     totalTime=time()-totalTime##################testing
     print ("Total Time "+str(totalTime))##########testing
-    
+
 def lifterLoop(root):
     root.lift()
     root.focus_force()
     root.after(50, func=lambda: lifterLoop(root))
-    
+
 def popup_showinfo():
     #helv36 = tkFont.Font(family='Helvetica', size=24, weight='bold')
     #def killThisWindow(popUpAbout):
@@ -435,19 +558,19 @@ def popup_showinfo():
     #    okPopButton.grid(row=1, column=0,columnspan=1)
     #    popUpAbout.mainloop()
     os.system('python3 '+working_dirctory+'about.py')
-    
 
-    
+
+
 if __name__ == '__main__':
     CV_CAP_PROP_FRAME_WIDTH=3
     CV_CAP_PROP_FRAME_HEIGHT=4
-    CV_CAP_PROP_FPS=5
+    CV_CAP_PROP_FPS=30
     #width=240
     #height=200
     #width=480
     #height=400
-    width=1280###############hard code resolution
-    height=720##############hard code resolution
+    width=480#720#1280#hard code resolution
+    height=360#480#720#hard code resolution
     #width=1920
     #height=1080
     #width=5168
@@ -464,7 +587,7 @@ if __name__ == '__main__':
 
     cv2.setUseOptimized(1)
     cam=cv2.VideoCapture(0)
-    
+
     cam.set(CV_CAP_PROP_FRAME_WIDTH,width)
     cam.set(CV_CAP_PROP_FRAME_HEIGHT,height)
     if height >=1080:
@@ -473,7 +596,7 @@ if __name__ == '__main__':
     elif height==720:
         fps=5#was 9
         cam.set(CV_CAP_PROP_FPS,fps);
-    
+
     d = threading.Thread(name='daemon', target=daemon,args=(cam,child_conn))
     d.setDaemon(True)
     d.start()
@@ -481,17 +604,23 @@ if __name__ == '__main__':
     root=Tkinter.Tk()
 
     helv36 = tkFont.Font(family='Helvetica', size=24, weight='bold')
-    
+
     quit_button = Tkinter.Button(master=root,width=10, text='Quit',font=helv36,command=lambda: quit_(cam,root))
     quit_button.grid(row=15, column=0,columnspan=3)#gui location
     saveButton = Tkinter.Button(master=root,width=10, text='Magnify',font=helv36,command=lambda: vSave())
     saveButton.grid(row=7, column=0,columnspan=3)#gui location
     aboutButton = Tkinter.Button(master=root,width=10, text='About',font=helv36,command=lambda: popup_showinfo())
     aboutButton.grid(row=14, column=0,columnspan=3)#gui location
-
     
-
     
+    screenshotButton = Tkinter.Button(master=root,width=10, text='Screenshot',font=helv36,command=lambda: screenshot()) #need to change command
+    screenshotButton.grid(row=16, column=0,columnspan=3)#gui location
+    textButton = Tkinter.Button(master=root,width=10, text='Text',font=helv36,command=lambda: imagetotext()) #need to change command #make it go from image to text automatically
+    textButton.grid(row=17, column=0,columnspan=3)#gui location
+    offlinespeechButton = Tkinter.Button(master=root,width=10, text='Offline Speech',font=helv36,command=lambda: offlinespeech()) #need to change command
+    offlinespeechButton.grid(row=18, column=0,columnspan=3)#gui location
+
+
     blackWhiteButton = Tkinter.Button(master=root,width=10, text='Black',fg='Black',bg='white',font=helv36,command=lambda: blackWhiteF())
     blackWhiteButton.grid(row=1, column=0,columnspan=1)
     whiteBlackButton = Tkinter.Button(master=root,width=10, text='White',fg='white',bg='black',font=helv36,command=lambda: whiteBlackF())
@@ -506,24 +635,24 @@ if __name__ == '__main__':
     blackYellowButton.grid(row=5, column=0,columnspan=1)
 
 
-    #default_font = tkFont.nametofont("TkDefaultFont")
-    #default_font.configure(family='Helvetica', size=24, weight='bold')
-    #cameraControl=Tkinter.Tk()
-    #helv362 = tkFont.Font(family='Helvetica', size=24, weight='bold')
-    #pauseFocus = Tkinter.Button(master=root,width=12, text='Autofocus',fg='Black',font=helv36,command=lambda: pauseFocusF())
-    #pauseFocus.grid(row=0, column=3,columnspan=1)
-    #minusFocus = Tkinter.Button(master=cameraControl,width=5, text='Focus -',fg='Black',font=helv362,command=lambda: minusFocusF())
-    #minusFocus.grid(row=1, column=0,columnspan=1)
-    #plusFocus = Tkinter.Button(master=cameraControl,width=5, text='Focus +',fg='Black',font=helv362,command=lambda: plusFocusF())
-    #plusFocus.grid(row=1, column=1,columnspan=1)
+    default_font = tkFont.nametofont("TkDefaultFont")
+    default_font.configure(family='Helvetica', size=24, weight='bold')
+    cameraControl=Tkinter.Tk()
+    helv362 = tkFont.Font(family='Helvetica', size=24, weight='bold')
+    pauseFocus = Tkinter.Button(master=root,width=12, text='Autofocus',fg='Black',font=helv36,command=lambda: pauseFocusF())
+    pauseFocus.grid(row=0, column=3,columnspan=1)
+    minusFocus = Tkinter.Button(master=cameraControl,width=5, text='Focus -',fg='Black',font=helv362,command=lambda: minusFocusF())
+    minusFocus.grid(row=1, column=0,columnspan=1)
+    plusFocus = Tkinter.Button(master=cameraControl,width=5, text='Focus +',fg='Black',font=helv362,command=lambda: plusFocusF())
+    plusFocus.grid(row=1, column=1,columnspan=1)
     sliderFocus=Tkinter.Scale(master=root,from_=255, to=0, resolution=5, font=helv36,label='Focus', command=slideFocusF, length=300, width=50)#fake limit is set at 25 and not 255 on the focus
     sliderFocus.grid(row=8, column=0,columnspan=1,rowspan=6)
     sliderFocus.set(10)
 
-    
+
     root.wm_title("Controls")
     #cameraControl.wm_title("Focus")
-    
+
     img1=parent_conn.recv()#read frame from thread
     parent_conn.close()#cleaning up after read
     d.join()
@@ -531,17 +660,17 @@ if __name__ == '__main__':
     d = threading.Thread(name='daemon', target=daemon,args=(cam,child_conn))#starts the thread that only reads the frames. Also starting now sets this thread to be working while main is displaying the last frame
     d.setDaemon(True)#allow main to close without it... IDK seemed like a good idea
     d.start()
-    
-    
+
+
     #img1 = Image.fromarray(img1)###########################################
     #img1 = ImageTk.PhotoImage(img1)
 
-    #cv2.namedWindow("Preview", cv2.WINDOW_AUTOSIZE)
-    cv2.namedWindow("Preview",cv2.WND_PROP_FULLSCREEN)
+    cv2.namedWindow("Preview", cv2.WINDOW_AUTOSIZE) #Use this one for coding
+    #cv2.namedWindow("Preview",cv2.WND_PROP_FULLSCREEN) #Nathan used this one
     cv2.setWindowProperty("Preview",cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 
-    
+
     panel=None
     root.attributes("-topmost", True)
 
