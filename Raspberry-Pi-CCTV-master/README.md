@@ -13,6 +13,6 @@ Once the questions have been answered and the update has finished click ok on th
 After a couple of hours, it will ask one final question (Is this correct (y/n)).
 If you want the autostart function on type “y”.
 
+Update: 01/01/2021
+Contributed to the original project by introducing OCR Image-to-Text-to-Speech, better live imaging, and better magnification.
 
-
-Updated: 12/17/2018
